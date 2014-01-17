@@ -4,6 +4,7 @@ import json
 import requests
 import lxml.html
 
+# When debug is on, no requests are sent to ordbogen.com.
 DEBUG = True
 
 LOGIN_URL = 'http://ordbogen.com/ajax/login.json.php'
@@ -11,11 +12,13 @@ LOGOUT_URL = 'http://www.ordbogen.com/user/logout.php'
 LOOKUP_URL = 'http://www.ordbogen.com/opslag.php?word={word}&dict={lang}'
 
 """ List of valid languages.
-These are abbreviated by the first two letters of a language, in Danish.
+These are used by ordbogen.com and are abbreviated by the first two letters
+of each language, written in Danish.
 """
 VALID_LANGUAGES = ('auto', 'daen', 'daty', 'dafr', 'dapo', 'dait')
 
-""" Session to hold session keys. We should probably set a user agent string.
+""" Session to hold session keys.
+Should probably set a user agent string.
 """
 session = requests.Session()
 
@@ -24,7 +27,7 @@ def login(username, password):
     """ Authenticate with ordbogen.com.
     Update global variable `session` with session keys.
 
-    Return bool status and string error.
+    Return bool indicating status and string with error messages.
 
     """
     # Create payload for jsonrpc.
