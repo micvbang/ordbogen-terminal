@@ -46,5 +46,10 @@ def lookup(word):
     print(r.text.encode('utf8'))
 
 
+def keepalive():
+    # http://www.ordbogen.com/user/keepalive.php?time=1389915302.2
+    pass
+
+
 if __name__ == '__main__':
     main()
