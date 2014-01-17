@@ -11,15 +11,6 @@ LOOKUP_URL = 'http://www.ordbogen.com/opslag.php?word={word}&dict=auto'
 session = requests.Session()
 
 
-def main():
-    success, error = login(environ['ORDBOGEN_COM_USERNAME'],
-                           environ['ORDBOGEN_COM_PASSWORD'])
-    if not success:
-        print("Could not log in: {e}".format(e=error))
-        return
-    print("Logged in...")
-
-
 def login(username, password):
     """ Log in to ordbogen.com.
     Updates `session` with session keys.
