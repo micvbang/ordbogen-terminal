@@ -30,6 +30,9 @@ def login(username, password):
     Return bool indicating status and string with error messages.
 
     """
+    # TODO: Check whether we are already logged in or not.
+    # This can't really be done until I try and save cookies locally.
+
     # Create payload for jsonrpc.
     payload = {
         "params": [username, password, True, 1],
