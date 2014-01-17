@@ -44,7 +44,7 @@ def login(username, password):
 
 def lookup(word, lang='auto'):
     """ Look up a word.
-    Return type subject to change.
+    Return type is subject to change.
 
     """
     if not lang in VALID_LANGUAGES:
@@ -82,7 +82,7 @@ def _getattribute(doc, selector, attribute, num=0):
 
 def _parselookup(html):
     """ Parse HTML from a lookup request.
-    Return type subject to change.
+    Return type is subject to change.
 
     """
     doc = lxml.html.fromstring(html)
