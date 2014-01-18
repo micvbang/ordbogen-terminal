@@ -75,7 +75,7 @@ def _gettext(doc, selector, num=0):
     """
     lst = doc.cssselect(selector)
     if num < len(lst):
-        return lst[num].text_content()
+        return lst[num].text_content().strip()
     return None
 
 
