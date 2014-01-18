@@ -1,12 +1,13 @@
 # encoding: utf8
 from os import environ
+import atexit
 
 from clint.textui import colored, puts, indent
 
 from api import login, lookup, logout
 import api
 
-api.DEBUG = True
+api.DEBUG = False
 
 
 def main(username=None, password=None):
@@ -32,7 +33,7 @@ def main(username=None, password=None):
         if input_ is None:
             continue
         # Print examples for a given word.
-        if lastresults != [] and unicode(input_).isnumeric():
+        if lastresults != [] and _isint(input_):
             word = lastresults[int(input_) - 1]
             for example in word.examples:
                 _printexample(example)
@@ -41,6 +42,7 @@ def main(username=None, password=None):
         results = lookup(input_)
         # Delete line that user just wrote. For now we just put an empty line.
         puts()
+        lastresults = []
         for language in results:
             puts(language)
             with indent(4):
@@ -80,5 +82,16 @@ def _printexample(example):
     puts(txt)
 
 
+def _isint(i):
+    try:
+        int(i)
+        return True
+    except ValueError:
+        return False
+
 if __name__ == '__main__':
-    main()
+    atexit.register(logout)
+    try:
+        main()
+    except KeyboardInterrupt:
+        puts("Stopping program!")
