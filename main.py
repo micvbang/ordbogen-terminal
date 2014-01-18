@@ -11,6 +11,8 @@ api.DEBUG = False
 
 
 def main(username=None, password=None):
+    """ Log in to ordbogen.com and start an interactive shell.
+    """
     if username is None:
         username = environ['ORDBOGEN_COM_USERNAME']
     if password is None:
@@ -52,8 +54,6 @@ def main(username=None, password=None):
                     i += 1
         puts("\nSearch for a new word, or choose to see a word in more details.")
         i = 1
-    # We're done!
-    logout()
 
 
 def _(arg):
@@ -67,6 +67,9 @@ def _(arg):
 
 
 def _printword(word, i):
+    """ Pretty print an instance of `TRANSLATED_WORD` from api.
+
+    """
     txt = "{i}. {word} {class_} {inflection}".format(i=i, word=colored.red(word.word),
                                                      class_=colored.blue(_(word.wordclass)),
                                                      inflection=colored.cyan(_(word.inflection)))
@@ -74,6 +77,9 @@ def _printword(word, i):
 
 
 def _printexample(example):
+    """ Pretty print an instance of `WORD_EXAMPLES` from api.
+
+    """
     txt = ("-{explanation}{combination} {word} "
            "- {example}".format(explanation=colored.green(_(example.explanation)),
                                 combination=colored.cyan(_(example.combination)),
@@ -83,6 +89,9 @@ def _printexample(example):
 
 
 def _isint(i):
+    """ Return true if arg is an integer.
+
+    """
     try:
         int(i)
         return True
@@ -90,6 +99,7 @@ def _isint(i):
         return False
 
 if __name__ == '__main__':
+    # Make sure that we log out whenever the program exists.
     atexit.register(logout)
     try:
         main()
