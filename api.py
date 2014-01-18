@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import namedtuple, defaultdict, deque
 import json
 
 import requests
@@ -21,6 +21,9 @@ VALID_LANGUAGES = ('auto', 'daen', 'daty', 'dafr', 'dapo', 'dait')
 Should probably set a user agent string.
 """
 session = requests.Session()
+
+TRANSLATED_WORD = namedtuple('TranslatedWord', ['word', 'language', 'wordclass', 'inflection', 'examples'])
+WORD_EXAMPLES = namedtuple('WordExamples', ['category', 'example', 'explanation', 'word', 'combination'])
 
 
 def login(username, password):
@@ -93,27 +96,37 @@ def _parselookup(html):
     """
     doc = lxml.html.fromstring(html)
     resultdiv = doc.cssselect('div.searchArticleResult')
-    results = defaultdict(dict)
-    # Parse html in to a dict of translations.
-    for languagedoc in resultdiv[0].cssselect('h5'):
-        # Find language.
-        language = languagedoc.text_content()
-        results[language] = defaultdict(dict)
-        # Get translations from each language.
-        for worddoc in languagedoc.getnext():  # worddocs are siblings of language elements.
-            word = _getattribute(worddoc, 'input', 'value')
-            wordclass = _gettext(worddoc, 'span.wordclass')
-            inflection = _gettext(worddoc, 'span.inflection')
-            results[language][word]['wordclass'] = wordclass
-            results[language][word]['inflection'] = inflection
-            # Get examples for each word.
-            results[language][word]['examples'] = []
-            for exampledoc in worddoc.cssselect('div.examples li.articleHover'):
-                example = {'category': _gettext(exampledoc, 'span.category'),
-                           'example': _gettext(exampledoc, 'span.example'),
-                           'explanation': _gettext(exampledoc, 'span.explanation'),
-                           'word': _getattribute(exampledoc, 'input.wordBox', 'value')}
-                results[language][word]['examples'].append(example)
+    langdoc = resultdiv[0].cssselect('h5')[0]
+
+    # This is an ugly hack to create a list of that holds the language once per translation found.
+    # If two words were found, this could be [Danish-English, Danish-English].
+    languages = deque()
+    language = langdoc.text_content()
+    while langdoc is not None:
+        if langdoc.tag == 'h5':
+            language = langdoc.text_content()
+        languages.append(language)
+        langdoc = langdoc.getnext()
+    results = defaultdict(list)
+    # Find language translation direction (e.g. Danish->English).
+    # Get translations from each language.
+    for worddoc in resultdiv[0].cssselect('div.articlePadding'):
+        language = languages.popleft()
+        word = TRANSLATED_WORD(language=language,
+                               word=_getattribute(worddoc, 'input', 'value'),
+                               inflection=_gettext(worddoc, 'span.inflection'),
+                               wordclass=_gettext(worddoc, 'span.wordclass'),
+                               # comment=_gettext(worddoc, 'div.gramComment'),
+                               examples=[])
+        # Get usage-examples for each word.
+        for exampledoc in worddoc.cssselect('div.examples li.articleHover'):
+            example = WORD_EXAMPLES(category=_gettext(exampledoc, 'span.category'),
+                                    example=_gettext(exampledoc, 'span.example'),
+                                    explanation=_gettext(exampledoc, 'span.explanation'),
+                                    combination=_gettext(exampledoc, 'span.combination'),
+                                    word=_getattribute(exampledoc, 'input.wordBox', 'value'))
+            word.examples.append(example)
+        results[language].append(word)
     return results
 
 
@@ -133,3 +146,25 @@ def logout():
     if DEBUG:
         return
     session.get(LOGOUT_URL)
+
+
+def _savecookie():
+    """ Save the login-cookie from ordbogen.com
+
+    """
+    raise NotImplemented()
+
+
+def _loadcookie():
+    """ Load the login-cookie for ordbogen.com
+
+    """
+    raise NotImplemented()
+
+
+def availablelanguages():
+    """ Return a list of available languages.
+    Languages available depend on the subscription the user has.
+
+    """
+    raise NotImplemented()
