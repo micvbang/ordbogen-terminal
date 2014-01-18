@@ -93,5 +93,5 @@ if __name__ == '__main__':
     atexit.register(logout)
     try:
         main()
-    except KeyboardInterrupt:
+    except KeyboardInterrupt, EOFError:
         puts("Stopping program!")
