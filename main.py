@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # encoding: utf8
 from os import environ
 import atexit
@@ -7,10 +8,10 @@ from clint.textui import colored, puts, indent
 from api import login, lookup, logout
 import api
 
-api.DEBUG = False
+api.DEBUG = True
 
 
-def main(username=None, password=None):
+def interactive(username=None, password=None):
     """ Log in to ordbogen.com and start an interactive shell.
     """
     if username is None:
@@ -23,85 +24,121 @@ def main(username=None, password=None):
         puts(msg)
         return
 
-    # Start main loop.
+    # Start interactive loop.
     puts("Ordbogen.com: You are logged in as {u}!".format(u=username))
-    puts("You can now begin looking up words.")
-    lastresults = []
-    i = 1
+    _prompt()
+    words = None
     while True:
         input_ = raw_input()
-        if input_ == "_exit":
-            break
-        if input_ is None:
-            continue
-        # Print examples for a given word.
-        if lastresults != [] and _isint(input_):
-            word = lastresults[int(input_) - 1]
-            for example in word.examples:
-                _printexample(example)
-            continue
-        # Use ordbogen.com api to look word up.
-        results = lookup(input_)
-        # Delete line that user just wrote. For now we just put an empty line.
-        puts()
-        lastresults = []
-        for language in results:
-            puts(language)
-            with indent(4):
-                for word in results[language]:
-                    lastresults.append(word)
-                    _printword(word, i)
-                    i += 1
-        puts("\nSearch for a new word, or choose to see a word in more details.")
-        i = 1
+        if input_ == "_exit_":
+            return
+        # Check if user wants see a detailed translation
+        if _isint(input_, words):
+            _printdetailed(input_, words)
+        # User wants to look up word.
+        else:
+            words = _lookup_and_print(input_)
+        _prompt()
+
+
+def _lookup_and_print(input_):
+    """ Look up word and print found translations.
+    Number each translation so that it can be referenced by the user.
+
+    Return a list of `WordDetails` for each translation. Translations are
+    numbered (as described above) 1-indexed, so the 'real' index in to the list
+    is i - 1.
+
+    """
+    # Use ordbogen.com api to look word up.
+    results = lookup(input_)
+    # Delete line that user just wrote. For now we just put an empty line.
+    puts()
+    words = []
+    for language in results:
+        # Print language 'header'.
+        puts(language)
+        with indent(4):
+            for word in results[language]:
+                words.append(word)
+                _printword(word, "%i. " % len(words))
+    return words
+
+
+def _prompt():
+    puts("\nSearch for a word or view a translation in details.")
+    puts("Search: ", newline=False)
 
 
 def _(arg):
-    """ Return an empty string if arg is None.
+    """ Return an empty string if arg is None, else return arg.
 
     """
 
-    if arg is None:
-        return ''
-    return arg
+    return arg if arg is not None else ''
 
 
-def _printword(word, i):
-    """ Pretty print an instance of `TRANSLATED_WORD` from api.
+def _printword(word, indicator=None):
+    """ Pretty print an instance of `TranslatedWord` from api.py
+
+    `indicator` must be None or a string, and will be printed just
+    before `word`.
 
     """
-    txt = "{i}. {word} {class_} {inflection}".format(i=i, word=colored.red(word.word),
-                                                     class_=colored.blue(_(word.wordclass)),
-                                                     inflection=colored.cyan(_(word.inflection)))
+    # Abusing automatic string concatenation.
+    txt = ("{indicator}{word} {class_} {inflection}"
+           "".format(indicator=_(indicator), word=colored.red(word.word),
+                     class_=colored.blue(_(word.wordclass)),
+                     inflection=colored.cyan(_(word.inflection))))
     puts(txt)
 
 
-def _printexample(example):
-    """ Pretty print an instance of `WORD_EXAMPLES` from api.
+def _printdetailed(input_, words):
+    """ Pretty print detailed translation from an instance of TranslatedWord.
 
     """
-    txt = ("-{explanation}{combination} {word} "
-           "- {example}".format(explanation=colored.green(_(example.explanation)),
-                                combination=colored.cyan(_(example.combination)),
-                                word=colored.black(_(example.word)),
-                                example=colored.magenta(_(example.example))))
+    index = int(input_) - 1
+    if index < 0 or index >= len(words):
+        puts("You must choose a number in the range 1-" + str(len(words) + 1))
+        return
+    word = words[index]
+    # Print header
+    puts("\n{lang}: {word}".format(lang=word.language,
+                                   word=colored.red(word.word)))
+    # Print details
+    with indent(4):
+        for detail in word.details:
+            _printdetail(detail)
+
+
+def _printdetail(detail):
+    """ Pretty print an instance of `WordDetails` from api.py
+
+    """
+    txt = ("-{explanation}{combination} {word} - {example}"
+           "".format(explanation=colored.green(_(detail.explanation)),
+                     combination=colored.cyan(_(detail.combination)),
+                     word=colored.black(_(detail.word)),
+                     example=colored.magenta(_(detail.example))))
     puts(txt)
 
 
-def _isint(i):
-    """ Return true if arg is an integer.
+def _isint(*args):
+    """ Return true if all args are integer.
 
     """
-    try:
-        int(i)
-        return True
-    except ValueError:
-        return False
+    for arg in args:
+        try:
+            int(arg)
+            return True
+        except ValueError:
+            return False
+
 
 if __name__ == '__main__':
     # Make sure that we log out whenever the program exists.
     atexit.register(logout)
     try:
-        main()
+        interactive()
     except KeyboardInterrupt, EOFError:
         puts("Stopping program!")
