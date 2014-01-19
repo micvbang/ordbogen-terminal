@@ -1,2 +1,4 @@
 *.pyc
 *.fuse_hidden*
+cookies
+html/
