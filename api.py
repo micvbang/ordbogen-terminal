@@ -1,8 +1,12 @@
 from collections import namedtuple, defaultdict, deque
+from os.path import dirname, join, abspath
 import json
 
 import requests
 import lxml.html
+
+
+here = lambda *args: join(abspath(dirname(__file__)), *args)
 
 # When debug is on, no requests are sent to ordbogen.com.
 DEBUG = True
@@ -22,8 +26,11 @@ Should probably set a user agent string.
 """
 session = requests.Session()
 
-TRANSLATED_WORD = namedtuple('TranslatedWord', ['word', 'language', 'wordclass', 'inflection', 'examples'])
-WORD_EXAMPLES = namedtuple('WordExamples', ['category', 'example', 'explanation', 'word', 'combination'])
+TranslatedWord = namedtuple('TranslatedWord', ['word', 'language',
+                                               'wordclass', 'inflection',
+                                               'details'])
+WordDetails = namedtuple('WordDetails', ['category', 'example', 'explanation',
+                                         'word', 'combination'])
 
 
 def login(username, password):
@@ -61,7 +68,7 @@ def lookup(word, lang='auto'):
     # Perform lookup.
     if DEBUG:
         html = None
-        with file('html/{w}.html'.format(w=word), 'r') as f:
+        with file(here('html/{w}.html').format(w=word), 'r') as f:
             html = f.read()
     else:
         r = session.get(LOOKUP_URL.format(word=word, lang=lang))
@@ -112,20 +119,20 @@ def _parselookup(html):
     # Get translations from each language.
     for worddoc in resultdiv[0].cssselect('div.articlePadding'):
         language = languages.popleft()
-        word = TRANSLATED_WORD(language=language,
-                               word=_getattribute(worddoc, 'input', 'value'),
-                               inflection=_gettext(worddoc, 'span.inflection'),
-                               wordclass=_gettext(worddoc, 'span.wordclass'),
-                               # comment=_gettext(worddoc, 'div.gramComment'),
-                               examples=[])
-        # Get usage-examples for each word.
-        for exampledoc in worddoc.cssselect('div.examples li.articleHover'):
-            example = WORD_EXAMPLES(category=_gettext(exampledoc, 'span.category'),
-                                    example=_gettext(exampledoc, 'span.example'),
-                                    explanation=_gettext(exampledoc, 'span.explanation'),
-                                    combination=_gettext(exampledoc, 'span.combination'),
-                                    word=_getattribute(exampledoc, 'input.wordBox', 'value'))
-            word.examples.append(example)
+        word = TranslatedWord(language=language,
+                              word=_getattribute(worddoc, 'input', 'value'),
+                              inflection=_gettext(worddoc, 'span.inflection'),
+                              wordclass=_gettext(worddoc, 'span.wordclass'),
+                              # comment=_gettext(worddoc, 'div.gramComment'),
+                              details=[])
+        # Get usage-details for each word.
+        for detaildoc in worddoc.cssselect('div.examples li.articleHover'):
+            detail = WordDetails(category=_gettext(detaildoc, 'span.category'),
+                                  example=_gettext(detaildoc, 'span.example'),
+                                  explanation=_gettext(detaildoc, 'span.explanation'),
+                                  combination=_gettext(detaildoc, 'span.combination'),
+                                  word=_getattribute(detaildoc, 'input.wordBox', 'value'))
+            word.details.append(detail)
         results[language].append(word)
     return results
 
