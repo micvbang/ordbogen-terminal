@@ -1,5 +1,5 @@
 from collections import namedtuple, defaultdict, deque
-from os.path import dirname, join, abspath
+from os.path import dirname, join, abspath, exists as pathexists
 import json
 
 import requests
@@ -11,9 +11,14 @@ here = lambda *args: join(abspath(dirname(__file__)), *args)
 # When debug is on, no requests are sent to ordbogen.com.
 DEBUG = True
 
-LOGIN_URL = 'http://ordbogen.com/ajax/login.json.php'
-LOGOUT_URL = 'http://www.ordbogen.com/user/logout.php'
-LOOKUP_URL = 'http://www.ordbogen.com/opslag.php?word={word}&dict={lang}'
+# File in which login-cookies are stored.
+COOKIE_FILE = here('cookies')
+
+# URLs used
+BASE_URL = 'http://ordbogen.com/'
+LOGIN_URL = BASE_URL + '/ajax/login.json.php'
+LOGOUT_URL = BASE_URL + '/user/logout.php'
+LOOKUP_URL = BASE_URL + '/opslag.php?word={word}&dict={lang}'
 
 """ List of valid languages.
 These are used by ordbogen.com and are abbreviated by the first two letters
@@ -26,9 +31,8 @@ Should probably set a user agent string.
 """
 session = requests.Session()
 
-TranslatedWord = namedtuple('TranslatedWord', ['word', 'language',
-                                               'wordclass', 'inflection',
-                                               'details'])
+TranslatedWord = namedtuple('TranslatedWord', ['word', 'language', 'wordclass',
+                                               'inflection', 'details'])
 WordDetails = namedtuple('WordDetails', ['category', 'example', 'explanation',
                                          'word', 'combination'])
 
@@ -43,6 +47,9 @@ def login(username, password):
     # TODO: Check whether we are already logged in or not.
     # This can't really be done until I try and save cookies locally.
 
+    if _loggedin(username):
+        print("Logged in using cookies from last time!")
+        return True, 'OK'
     # Create payload for jsonrpc.
     payload = {
         "params": [username, password, True, 1],
@@ -55,7 +62,17 @@ def login(username, password):
     else:
         r = session.post(LOGIN_URL, data=json.dumps(payload))
         jsonresponse = json.loads(r.text)
+        _savecookies()
     return jsonresponse['result'].get('status', False), jsonresponse['result'].get('message', None)
+
+
+def _loggedin(username):
+    """ Load saved cookies and check if we're already logged in.
+
+    """
+    _loadcookies()
+    response = session.get(BASE_URL)
+    return username in response.text
 
 
 def lookup(word, lang='auto'):
@@ -128,10 +145,10 @@ def _parselookup(html):
         # Get usage-details for each word.
         for detaildoc in worddoc.cssselect('div.examples li.articleHover'):
             detail = WordDetails(category=_gettext(detaildoc, 'span.category'),
-                                  example=_gettext(detaildoc, 'span.example'),
-                                  explanation=_gettext(detaildoc, 'span.explanation'),
-                                  combination=_gettext(detaildoc, 'span.combination'),
-                                  word=_getattribute(detaildoc, 'input.wordBox', 'value'))
+                                 example=_gettext(detaildoc, 'span.example'),
+                                 explanation=_gettext(detaildoc, 'span.explanation'),
+                                 combination=_gettext(detaildoc, 'span.combination'),
+                                 word=_getattribute(detaildoc, 'input.wordBox', 'value'))
             word.details.append(detail)
         results[language].append(word)
     return results
@@ -155,18 +172,24 @@ def logout():
     session.get(LOGOUT_URL)
 
 
-def _savecookie():
-    """ Save the login-cookie from ordbogen.com
+def _savecookies():
+    """ Save the cookies from `session` to COOKIE_FILE
 
     """
-    raise NotImplemented()
+    with file(COOKIE_FILE, 'w+') as f:
+        cookiedict = session.cookies.get_dict()
+        f.write(json.dumps(cookiedict))
 
 
-def _loadcookie():
-    """ Load the login-cookie for ordbogen.com
+def _loadcookies():
+    """ Load cookies from COOKIE_FILE in to `session`.
 
     """
-    raise NotImplemented()
+    if not pathexists(COOKIE_FILE):
+        return
+    with file(COOKIE_FILE, 'r') as f:
+        cookiedict = json.loads(f.read())
+        session.cookies = requests.cookies.cookiejar_from_dict(cookiedict)
 
 
 def availablelanguages():
