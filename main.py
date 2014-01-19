@@ -1,14 +1,13 @@
 #!/usr/bin/python
 # encoding: utf8
 from os import environ
-import atexit
 
 from clint.textui import colored, puts, indent
 
-from api import login, lookup, logout
+from api import login, lookup
 import api
 
-api.DEBUG = True
+api.DEBUG = False
 
 
 def interactive(username=None, password=None):
@@ -137,8 +136,6 @@ def _isint(*args):
 
 
 if __name__ == '__main__':
-    # Make sure that we log out whenever the program exists.
-    atexit.register(logout)
     try:
         interactive()
     except KeyboardInterrupt, EOFError:
