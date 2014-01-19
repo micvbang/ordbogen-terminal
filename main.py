@@ -103,10 +103,11 @@ def _printdetailed(input_, words):
         return
     word = words[index]
     # Print header
-    puts("\n{lang}: {word}".format(lang=word.language,
-                                   word=colored.red(word.word)))
+    puts()
+    puts(word.language)
     # Print details
     with indent(4):
+        _printword(word)
         for detail in word.details:
             _printdetail(detail)
 
