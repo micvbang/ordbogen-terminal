@@ -24,7 +24,16 @@ LOOKUP_URL = BASE_URL + '/opslag.php?word={word}&dict={lang}'
 These are used by ordbogen.com and are abbreviated by the first two letters
 of each language, written in Danish.
 """
-VALID_LANGUAGES = ('auto', 'daen', 'daty', 'dafr', 'dapo', 'dait')
+VALID_LANGUAGES = ('auto',  # Automatically choose a dictionary
+                   'daen',  # Danish-English
+                   'enda',  # English-Danish
+                   'daty',  # Danish-German
+                   'dafr',  # Danish-French
+                   'dait',  # Danish-Italian
+                   'pret',  # Politikens retskrivningsordbog
+                   'pndo',  # Politikens nudansk ordbog
+                   'fred',  # French-Danish ejendomsordbog
+                   )
 
 """ Session to hold session keys.
 Should probably set a user agent string.
