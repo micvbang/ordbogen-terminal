@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # encoding: utf8
 from os import environ
+from sys import argv
 
 from clint.textui import colored, puts, indent
 
@@ -10,7 +11,7 @@ import api
 api.DEBUG = False
 
 
-def interactive(username=None, password=None):
+def interactive(word=None, username=None, password=None):
     """ Log in to ordbogen.com and start an interactive shell.
     """
     if username is None:
@@ -27,6 +28,8 @@ def interactive(username=None, password=None):
     puts("Ordbogen.com: You are logged in as {u}!".format(u=username))
     _prompt()
     words = None
+    if word is not None:
+        words = _lookup_and_print(word)
     while True:
         input_ = raw_input()
         if input_ == "_exit_":
@@ -137,6 +140,6 @@ def _isint(*args):
 
 if __name__ == '__main__':
     try:
-        interactive()
+        interactive(" ".join(argv[1:]))
     except KeyboardInterrupt, EOFError:
         puts("Stopping program!")
