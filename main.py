@@ -28,7 +28,7 @@ def interactive(word=None, username=None, password=None):
     puts("Ordbogen.com: You are logged in as {u}!".format(u=username))
     _prompt()
     words = None
-    if word is not None:
+    if word:
         words = _lookup_and_print(word)
     while True:
         input_ = raw_input()
