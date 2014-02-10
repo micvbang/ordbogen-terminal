@@ -141,5 +141,5 @@ def _isint(*args):
 if __name__ == '__main__':
     try:
         interactive(" ".join(argv[1:]))
-    except KeyboardInterrupt, EOFError:
+    except (KeyboardInterrupt, EOFError):
         puts("Stopping program!")
