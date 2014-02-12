@@ -8,9 +8,6 @@ import lxml.html
 
 here = lambda *args: join(abspath(dirname(__file__)), *args)
 
-# When debug is on, no requests are sent to ordbogen.com.
-DEBUG = True
-
 # File in which login-cookies are stored.
 COOKIE_FILE = here('cookies')
 
@@ -57,7 +54,7 @@ def login(username, password):
     # This can't really be done until I try and save cookies locally.
 
     if _loggedin(username):
-        print("Logged in using cookies from last time!")
+        print("Logged in using cookies from last visit.")
         return True, 'OK'
     # Create payload for jsonrpc.
     payload = {
@@ -66,12 +63,9 @@ def login(username, password):
         "id": 'jsonrpc'
     }
     # Send request to server.
-    if DEBUG:
-        jsonresponse = {'result': {'status': True, 'message': 'Alrighty!'}}
-    else:
-        r = session.post(LOGIN_URL, data=json.dumps(payload))
-        jsonresponse = json.loads(r.text)
-        _savecookies()
+    r = session.post(LOGIN_URL, data=json.dumps(payload))
+    jsonresponse = json.loads(r.text)
+    _savecookies()
     return jsonresponse['result'].get('status', False), jsonresponse['result'].get('message', None)
 
 
@@ -92,13 +86,8 @@ def lookup(word, lang='auto'):
     if not lang in VALID_LANGUAGES:
         return "Invalid language '{l}'."
     # Perform lookup.
-    if DEBUG:
-        html = None
-        with file(here('html/{w}.html').format(w=word), 'r') as f:
-            html = f.read()
-    else:
-        r = session.get(LOOKUP_URL.format(word=word, lang=lang))
-        html = r.text
+    r = session.get(LOOKUP_URL.format(word=word, lang=lang))
+    html = r.text
     return _parselookup(html)
 
 
@@ -176,8 +165,6 @@ def logout():
     """ Tell ordbogen.com that we want to log out.
 
     """
-    if DEBUG:
-        return
     session.get(LOGOUT_URL)
 
 
