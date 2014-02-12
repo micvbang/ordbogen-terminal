@@ -1,4 +1,4 @@
-Read me
+README
 =========
 
 This is a python script to look up words on ordbogen.com directly in your terminal. Requires a subscription!
