@@ -16,6 +16,7 @@ BASE_URL = 'http://ordbogen.com/'
 LOGIN_URL = BASE_URL + '/ajax/login.json.php'
 LOGOUT_URL = BASE_URL + '/user/logout.php'
 LOOKUP_URL = BASE_URL + '/opslag.php?word={word}&dict={lang}'
+WORD_SUGGEST_URL = BASE_URL + "/wordcompletion/get_wordsuggestions.php?string={word}&dict={lang}"
 
 """ List of valid languages.
 These are used by ordbogen.com and are abbreviated by the first two letters
@@ -41,6 +42,7 @@ TranslatedWord = namedtuple('TranslatedWord', ['word', 'language', 'wordclass',
                                                'inflection', 'details'])
 WordDetails = namedtuple('WordDetails', ['category', 'example', 'explanation',
                                          'word', 'combination'])
+WordSuggestion = namedtuple('WordSuggestion', ['word', 'language'])
 
 
 def login(username, password):
@@ -69,13 +71,11 @@ def login(username, password):
     return jsonresponse['result'].get('status', False), jsonresponse['result'].get('message', None)
 
 
-def _loggedin(username):
-    """ Load saved cookies and check if we're already logged in.
+def logout():
+    """ Tell ordbogen.com that we want to log out.
 
     """
-    _loadcookies()
-    response = session.get(BASE_URL)
-    return username in response.text
+    session.get(LOGOUT_URL)
 
 
 def lookup(word, lang='auto'):
@@ -89,6 +89,36 @@ def lookup(word, lang='auto'):
     r = session.get(LOOKUP_URL.format(word=word, lang=lang))
     html = r.text
     return _parselookup(html)
+
+
+def wordsuggestions(word, lang='auto'):
+    """ Return a list of word suggestions.
+
+    """
+    if not lang in VALID_LANGUAGES:
+        return "Invalid language '{l}'".format(l=lang)
+    r = session.get(WORD_SUGGEST_URL.format(word=word, lang=lang))
+    res = []
+    for d in r.json():
+        res.append(WordSuggestion(d['word'], d['shortdict']))
+    return res
+
+
+def keepalive():
+    """ Tell ordbogen.com that we want to keep connection alive.
+    Not sure whether this is needed or not.
+
+    """
+    # http://www.ordbogen.com/user/keepalive.php?time=1389915302.2
+    raise NotImplemented()
+
+
+def availablelanguages():
+    """ Return a list of available languages.
+    Languages available depend on the subscription the user has.
+
+    """
+    raise NotImplemented()
 
 
 def _gettext(doc, selector, num=0):
@@ -109,6 +139,35 @@ def _getattribute(doc, selector, attribute, num=0):
     if num < len(lst):
         return lst[num].get(attribute, None)
     return None
+
+
+def _loggedin(username):
+    """ Load saved cookies and check if we're already logged in.
+
+    """
+    _loadcookies()
+    response = session.get(BASE_URL)
+    return username in response.text
+
+
+def _savecookies():
+    """ Save the cookies from `session` to COOKIE_FILE
+
+    """
+    with file(COOKIE_FILE, 'w+') as f:
+        cookiedict = session.cookies.get_dict()
+        f.write(json.dumps(cookiedict))
+
+
+def _loadcookies():
+    """ Load cookies from COOKIE_FILE in to `session`.
+
+    """
+    if not pathexists(COOKIE_FILE):
+        return
+    with file(COOKIE_FILE, 'r') as f:
+        cookiedict = json.loads(f.read())
+        session.cookies = requests.cookies.cookiejar_from_dict(cookiedict)
 
 
 def _parselookup(html):
@@ -150,47 +209,3 @@ def _parselookup(html):
             word.details.append(detail)
         results[language].append(word)
     return results
-
-
-def keepalive():
-    """ Tell ordbogen.com that we want to keep connection alive.
-    Not sure whether this is needed or not.
-
-    """
-    # http://www.ordbogen.com/user/keepalive.php?time=1389915302.2
-    raise NotImplemented()
-
-
-def logout():
-    """ Tell ordbogen.com that we want to log out.
-
-    """
-    session.get(LOGOUT_URL)
-
-
-def _savecookies():
-    """ Save the cookies from `session` to COOKIE_FILE
-
-    """
-    with file(COOKIE_FILE, 'w+') as f:
-        cookiedict = session.cookies.get_dict()
-        f.write(json.dumps(cookiedict))
-
-
-def _loadcookies():
-    """ Load cookies from COOKIE_FILE in to `session`.
-
-    """
-    if not pathexists(COOKIE_FILE):
-        return
-    with file(COOKIE_FILE, 'r') as f:
-        cookiedict = json.loads(f.read())
-        session.cookies = requests.cookies.cookiejar_from_dict(cookiedict)
-
-
-def availablelanguages():
-    """ Return a list of available languages.
-    Languages available depend on the subscription the user has.
-
-    """
-    raise NotImplemented()
