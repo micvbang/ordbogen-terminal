@@ -127,15 +127,10 @@ def _printdetail(detail):
 
 
 def _isint(*args):
-    """ Return true if all args are integer.
+    """ Return True if all args are integer.
 
     """
-    for arg in args:
-        try:
-            int(arg)
-            return True
-        except ValueError:
-            return False
+    return all(map(lambda arg: isinstance(arg, int), args))
 
 
 if __name__ == '__main__':
