@@ -20,12 +20,13 @@ class TestAPI(unittest.TestCase):
 class TestMain(unittest.TestCase):
 
     def test_isint(self):
-        # Ints are ints.
-        self.assertTrue(_isint(1, 2, 3, 4, 5, 6, 7, 8, 9))
+        # Can be converted to int
         self.assertTrue(_isint(1))
+        self.assertTrue(_isint(1, 2, 3))
+        self.assertTrue(_isint('1'))
+        self.assertTrue(_isint('1', '2', '3'))
 
-        # Strings, lists, and tuples are not ints.
-        self.assertFalse(_isint('1'))
+        # Can not be converted to int.
         self.assertFalse(_isint([1]))
         self.assertFalse(_isint((1,)))
 

@@ -26,16 +26,16 @@ def interactive(word=None, username=None, password=None):
 
     # Start interactive loop.
     puts("Ordbogen.com: You are logged in as {u}!".format(u=username))
-    _prompt()
     words = None
     if word:
         words = _lookup_and_print(word)
+    _prompt()
     while True:
         input_ = raw_input()
         if input_ == "_exit_":
             return
         # Check if user wants see a detailed translation
-        if _isint(input_, words):
+        if _isint(input_):
             _printdetailed(input_, words)
         # User wants to look up word.
         else:
@@ -127,10 +127,13 @@ def _printdetail(detail):
 
 
 def _isint(*args):
-    """ Return True if all args are integer.
+    """ Return true if all args are or can be converted to integers.
 
     """
-    return all(map(lambda arg: isinstance(arg, int), args))
+    try:
+        return all(map(lambda arg: int(arg), args))
+    except (TypeError, ValueError):
+        return False
 
 
 if __name__ == '__main__':
