@@ -34,7 +34,7 @@ def interactive(word=None, username=None, password=None):
         input_ = raw_input()
         if input_ == "_exit_":
             return
-        # Check if user wants see a detailed translation
+        # Check if user wants see a detailed translation.
         if _isint(input_):
             _printdetailed(input_, words)
         # User wants to look up word.
@@ -64,6 +64,9 @@ def _lookup_and_print(input_):
             for word in results[language]:
                 words.append(word)
                 _printword(word, "%i. " % len(words))
+    # Print detailed information if we only found 1 word.
+    if len(words) == 1:
+            _printdetailed(1, words)
     return words
 
 
@@ -121,7 +124,7 @@ def _printdetail(detail):
     txt = ("-{explanation}{combination} {word} - {example}"
            "".format(explanation=colored.green(_(detail.explanation)),
                      combination=colored.cyan(_(detail.combination)),
-                     word=colored.black(_(detail.word)),
+                     word=colored.yellow(_(detail.word)),
                      example=colored.magenta(_(detail.example))))
     puts(txt)
 
