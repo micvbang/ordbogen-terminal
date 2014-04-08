@@ -1,11 +1,11 @@
 #!/usr/bin/python
 # encoding: utf8
 from os import environ
-from sys import argv
+import sys
 
 from clint.textui import colored, puts, indent
 
-from api import login, lookup
+from api import login, lookup, availabledictionaries
 import api
 
 api.DEBUG = False
@@ -37,8 +37,9 @@ def _interactive(word=None):
     # Main loop.
     while True:
         input_ = raw_input()
-        if input_ == "_exit_":
-            return
+        # Check whether a command was given.
+        if _parsecommand(input_):
+            continue
         # Check if user wants see a detailed translation.
         if _isint(input_):
             _printdetailed(input_, words)
@@ -46,6 +47,16 @@ def _interactive(word=None):
         else:
             words = _lookup_and_print(input_)
         _prompt()
+
+
+def _parsecommand(txt):
+    """ Much too simple command parsing
+
+    """
+    if txt == "_exit":
+        sys.exit(0)
+    elif txt == "_dicts":
+        _printavailabledictionaries()
 
 
 def _lookup_and_print(input_):
@@ -145,13 +156,13 @@ def _isint(*args):
 
 
 def _printavailabledictionaries():
-    print("The following languages are available:")
-    for i, lang in enumerate(api.languages()):
+    print("The following availabledictionaries are available:")
+    for i, lang in enumerate(availabledictionaries()):
         print "{i}: {l}".format(i=i + 1, l=lang)
 
 
 if __name__ == '__main__':
     try:
-        main(" ".join(argv[1:]))
+        main(" ".join(sys.argv[1:]))
     except (KeyboardInterrupt, EOFError):
         puts("Stopping program!")

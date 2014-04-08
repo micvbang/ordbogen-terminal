@@ -1,5 +1,5 @@
 # encoding: utf8
-from collections import namedtuple, defaultdict, deque
+from collections import namedtuple, defaultdict
 from os.path import dirname, join, abspath, exists as pathexists
 import json
 
@@ -16,15 +16,15 @@ COOKIE_FILE = here('cookies')
 BASE_URL = 'http://ordbogen.com/'
 LOGIN_URL = BASE_URL + '/ajax/login.json.php'
 LOGOUT_URL = BASE_URL + '/user/logout.php'
-LOOKUP_URL = BASE_URL + '/opslag.php?word={word}&dict={lang}'
-WORD_SUGGEST_URL = BASE_URL + "/wordcompletion/get_wordsuggestions.php?string={word}&dict={lang}"
+LOOKUP_URL = BASE_URL + '/opslag.php?word={word}&dict={dic}'
+WORD_SUGGEST_URL = BASE_URL + "/wordcompletion/get_wordsuggestions.php?string={word}&dict={dic}"
 
-""" List of valid languages.
+""" List of valid dictionaries.
 These are used by ordbogen.com and are abbreviated by the first two letters
 of each language, written in Danish.
 """
 DICTIONARIES = {
-    'auto': "Alle ordbøger",
+    'auto': "Automatisk",
     'a016': "Arabisk / Dansk / Arabisk",
     'a021': "Blinkenberg & Høybye Fransk / Dansk / Fransk",
     'ddob': "DDO (Den Danske Ordbog)",
@@ -59,7 +59,7 @@ DICTIONARIES = {
     'rtsk': "Retskrivningsordbogen",
     'a005': "Spansk / Dansk / Spansk",
     'a004': "Svensk / Dansk / Svensk",
-    'a001': "Tysk / Dansk / Tysk}"}
+    'a001': "Tysk / Dansk / Tysk"}
 
 
 """ Tuples to store scraped translations in. """
@@ -76,7 +76,7 @@ Should probably set a user agent string.
 session = requests.Session()
 
 """ Dictionaries user has subscribed to. """
-_dictionarylanguages = []
+_availabledictionaries = []
 
 
 def login(username, password):
@@ -97,7 +97,8 @@ def login(username, password):
     r = session.post(LOGIN_URL, data=json.dumps(payload))
     jsonresponse = json.loads(r.text)
     _savecookies()
-    return jsonresponse['result'].get('status', False), jsonresponse['result'].get('message', None)
+    return (jsonresponse['result'].get('status', False),
+            jsonresponse['result'].get('message', None))
 
 
 def logout():
@@ -107,26 +108,29 @@ def logout():
     session.get(LOGOUT_URL)
 
 
-def lookup(word, lang='auto'):
+def lookup(word, dic='auto'):
     """ Look up a word.
     Return type is subject to change.
 
     """
-    if lang not in DICTIONARIES:
-        return "Invalid language '{l}'."
+    if dic not in DICTIONARIES:
+        return "Invalid dicuage '{l}'."
     # Perform lookup.
-    r = session.get(LOOKUP_URL.format(word=word, lang=lang))
+    r = session.get(LOOKUP_URL.format(word=word, dic=dic))
     html = r.text
-    return _parselookup(html)
+    doc = lxml.html.fromstring(html)
+    # Get list of dictionaries that have results.
+    # dicts = _dictionarieswithhits(doc)
+    return _parselookup(doc)
 
 
-def wordsuggestions(word, lang='auto'):
+def wordsuggestions(word, dic='auto'):
     """ Return a list of word suggestions.
 
     """
-    if lang not in DICTIONARIES:
-        return "Invalid language '{l}'".format(l=lang)
-    r = session.get(WORD_SUGGEST_URL.format(word=word, lang=lang))
+    if dic not in DICTIONARIES:
+        return "Invalid dicuage '{l}'".format(l=dic)
+    r = session.get(WORD_SUGGEST_URL.format(word=word, dic=dic))
     res = []
     for d in r.json():
         res.append(WordSuggestion(d['word'], d['shortdict']))
@@ -142,15 +146,12 @@ def keepalive():
     raise NotImplemented()
 
 
-def languages():
-    """ Return a list of available languages.
-    Languages available depend on the subscription the user has.
+def availabledictionaries():
+    """ Return a list of available dictionaries.
+    The dictionaries available depend on the subscription the user has.
 
     """
-    # If there are no
-    if not _dictionarylanguages:
-        _parsedictionarylanguages()
-    return [DICTIONARIES[lang] for lang in _dictionarylanguages]
+    return [DICTIONARIES[lang] for lang in _availabledictionaries]
 
 
 def _gettext(doc, selector, num=0):
@@ -206,38 +207,29 @@ def _loadcookies():
 
 
 def _parsedictionarylanguages(html=None):
-    global _dictionarylanguages
+    global _availabledictionaries
     if not html:
         html = session.get(BASE_URL).text
     doc = lxml.html.fromstring(html)
     options = doc.cssselect('#dict option')
-    _dictionarylanguages = [option.get('value')
-                            for option in doc.cssselect("#dict option")]
+    _availabledictionaries = [option.get('value') for option in options]
 
 
-def _parselookup(html):
+def _parselookup(doc):
     """ Parse HTML from a lookup request.
     Return type is subject to change.
 
     """
-    doc = lxml.html.fromstring(html)
-    resultdiv = doc.cssselect('div.searchArticleResult')
-    langdoc = resultdiv[0].cssselect('h5')[0]
+    resultdiv = doc.cssselect('div.searchArticleResult')[0]
+    langdoc = resultdiv.cssselect('h5')[0]
 
     # This is an ugly hack to create a list of that holds the language once per translation found.
     # If two words were found, this could be [Danish-English, Danish-English].
-    languages = deque()
     language = langdoc.text_content()
-    while langdoc is not None:
-        if langdoc.tag == 'h5':
-            language = langdoc.text_content()
-        languages.append(language)
-        langdoc = langdoc.getnext()
     results = defaultdict(list)
     # Find language translation direction (e.g. Danish->English).
     # Get translations from each language.
     for worddoc in resultdiv[0].cssselect('div.articlePadding'):
-        language = languages.popleft()
         word = TranslatedWord(language=language,
                               word=_getattribute(worddoc, 'input', 'value'),
                               inflection=_gettext(worddoc, 'span.inflection'),
@@ -256,6 +248,9 @@ def _parselookup(html):
     return results
 
 
-def _gettranslationlanguages(doc):
+def _dictionarieswithhits(doc):
+    """ Get a list of the dictionaries that had hits on a query.
+
+    """
     lis = doc.cssselect("#dictsmenu li")
     return [li.get('id')[:-5] for li in lis]
