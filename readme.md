@@ -8,9 +8,7 @@ Requires `clint`, `requests`, and `lxml`.
 TODO
 ======
 - Create setup.py
-- Figure out which languages are available from website
-    - Choose between languages
 - Show translations for more than one language at a time
-- Find some way of incorporating word suggestions into the CLI
-- Add scrolling to CLI
-    - Add less/vi-type of shortcuts to CLI (e.g. j and k for scrolling)
+- Use ncurses for user interaction
+    - Find some way of incorporating word suggestions into the CLI.
+    - Make it easy to switch between dictionaries.
