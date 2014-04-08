@@ -114,7 +114,8 @@ def lookup(word, dic='auto'):
 
     """
     if dic not in DICTIONARIES:
-        return "Invalid dicuage '{l}'."
+        print "Invalid dictionary '{d}'.".format(d=dic)
+        return []
     # Perform lookup.
     r = session.get(LOOKUP_URL.format(word=word, dic=dic))
     html = r.text
@@ -129,7 +130,7 @@ def wordsuggestions(word, dic='auto'):
 
     """
     if dic not in DICTIONARIES:
-        return "Invalid dicuage '{l}'".format(l=dic)
+        return "Invalid dictionary '{l}'".format(l=dic)
     r = session.get(WORD_SUGGEST_URL.format(word=word, dic=dic))
     res = []
     for d in r.json():
@@ -151,7 +152,7 @@ def availabledictionaries():
     The dictionaries available depend on the subscription the user has.
 
     """
-    return [DICTIONARIES[lang] for lang in _availabledictionaries]
+    return {lang: DICTIONARIES[lang] for lang in _availabledictionaries}
 
 
 def _gettext(doc, selector, num=0):

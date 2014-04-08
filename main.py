@@ -7,6 +7,7 @@ from clint.textui import colored, puts, indent
 
 from api import login, lookup, availabledictionaries
 import api
+from commandparser import parse, Command
 
 api.DEBUG = False
 
@@ -29,37 +30,31 @@ def main(args):
 
 
 def _interactive(word=None):
+    dicts = availabledictionaries()
+    dic = 'auto'
     words = None
     if word:
-        words = _lookup_and_print(word)
+        words = _lookup_and_print(word, dic)
     _prompt()
 
     # Main loop.
     while True:
-        input_ = raw_input()
-        # Check whether a command was given.
-        if _parsecommand(input_):
-            continue
-        # Check if user wants see a detailed translation.
-        if _isint(input_):
-            _printdetailed(input_, words)
-        # User wants to look up word.
-        else:
-            words = _lookup_and_print(input_)
+        cmd, arg = parse(raw_input())
+        if cmd == Command.EXIT:
+            sys.exit(0)
+        elif cmd == Command.LIST_DICTS:
+            _printavailabledictionaries()
+        elif cmd == Command.SET_DICT:
+            dic = arg
+            puts("Dictionary set to {d}!".format(d=dicts[dic]))
+        elif cmd == Command.DETAILS:
+            _printdetailed(arg, words)
+        elif cmd == Command.LOOKUP:
+            words = _lookup_and_print(arg, dic)
         _prompt()
 
 
-def _parsecommand(txt):
-    """ Much too simple command parsing
-
-    """
-    if txt == "_exit":
-        sys.exit(0)
-    elif txt == "_dicts":
-        _printavailabledictionaries()
-
-
-def _lookup_and_print(input_):
+def _lookup_and_print(word, dic):
     """ Look up word and print found translations.
     Number each translation so that it can be referenced by the user.
 
@@ -69,7 +64,10 @@ def _lookup_and_print(input_):
 
     """
     # Use ordbogen.com api to look word up.
-    results = lookup(input_)
+    results = lookup(word, dic)
+    if not results:
+        puts("No results!")
+        return
     # Delete line that user just wrote. For now we just put an empty line.
     puts()
     words = []
@@ -145,20 +143,11 @@ def _printdetail(detail):
     puts(txt)
 
 
-def _isint(*args):
-    """ Return true if all args are or can be converted to integers.
-
-    """
-    try:
-        return all(map(lambda arg: int(arg), args))
-    except (TypeError, ValueError):
-        return False
-
-
 def _printavailabledictionaries():
     print("The following availabledictionaries are available:")
-    for i, lang in enumerate(availabledictionaries()):
-        print "{i}: {l}".format(i=i + 1, l=lang)
+    dicts = availabledictionaries()
+    for dic in dicts:
+        puts("{short}: {long}".format(short=dic, long=dicts[dic]))
 
 
 if __name__ == '__main__':
