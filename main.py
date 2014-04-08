@@ -11,25 +11,30 @@ import api
 api.DEBUG = False
 
 
-def interactive(word=None, username=None, password=None):
+def main(args):
     """ Log in to ordbogen.com and start an interactive shell.
+
     """
-    if username is None:
-        username = environ['ORDBOGEN_COM_USERNAME']
-    if password is None:
-        password = environ['ORDBOGEN_COM_PASSWORD']
+    username = environ['ORDBOGEN_COM_USERNAME']
+    password = environ['ORDBOGEN_COM_PASSWORD']
 
     success, msg = login(username, password)
     if not success:
         puts(msg)
         return
 
-    # Start interactive loop.
-    puts("Ordbogen.com: You are logged in as {u}!".format(u=username))
+    puts("Ordbogen.com: You are logged in as {u}!\n".format(u=username))
+    _printavailabledictionaries()
+    _interactive(word=args)
+
+
+def _interactive(word=None):
     words = None
     if word:
         words = _lookup_and_print(word)
     _prompt()
+
+    # Main loop.
     while True:
         input_ = raw_input()
         if input_ == "_exit_":
@@ -139,8 +144,14 @@ def _isint(*args):
         return False
 
 
+def _printavailabledictionaries():
+    print("The following languages are available:")
+    for i, lang in enumerate(api.languages()):
+        print "{i}: {l}".format(i=i + 1, l=lang)
+
+
 if __name__ == '__main__':
     try:
-        interactive(" ".join(argv[1:]))
+        main(" ".join(argv[1:]))
     except (KeyboardInterrupt, EOFError):
         puts("Stopping program!")

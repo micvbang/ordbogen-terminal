@@ -1,3 +1,4 @@
+# encoding: utf8
 from collections import namedtuple, defaultdict, deque
 from os.path import dirname, join, abspath, exists as pathexists
 import json
@@ -22,27 +23,60 @@ WORD_SUGGEST_URL = BASE_URL + "/wordcompletion/get_wordsuggestions.php?string={w
 These are used by ordbogen.com and are abbreviated by the first two letters
 of each language, written in Danish.
 """
-VALID_LANGUAGES = ('auto',  # Automatically choose a dictionary
-                   'daen',  # Danish-English
-                   'enda',  # English-Danish
-                   'daty',  # Danish-German
-                   'dafr',  # Danish-French
-                   'dait',  # Danish-Italian
-                   'pret',  # Politikens retskrivningsordbog
-                   'pndo',  # Politikens nudansk ordbog
-                   'fred',  # French-Danish ejendomsordbog
-                   )
+DICTIONARIES = {
+    'auto': "Alle ordbøger",
+    'a016': "Arabisk / Dansk / Arabisk",
+    'a021': "Blinkenberg & Høybye Fransk / Dansk / Fransk",
+    'ddob': "DDO (Den Danske Ordbog)",
+    'ddbo': "Den Danske Betydningsordbog",
+    'ddgr': "Den Danske Grammatik- og Staveordbog",
+    'ddno': "Den Danske Netordbog",
+    'ddsv': "Den Danske Skriveordbog",
+    'ddsy': "Den Danske Synonymordbog",
+    'fred': "Ejendomsordbog Fransk-Dansk",
+    'a000': "Engelsk / Dansk / Engelsk",
+    'a050': "Engelsk / Kinesisk / Engelsk",
+    'a002': "Fransk / Dansk / Fransk",
+    'ddbs': "Hvad er det nu, det hedder?",
+    'a008': "Italiensk / Dansk / Italiensk",
+    'musk': "Musikordbogen",
+    'a017': "Norsk / Engelsk / Norsk",
+    'fvdd': "Ordbogen over faste vendinger",
+    'a102': "Politikens Engelskordbog",
+    'a100': "Politikens Franskordbog",
+    'pfre': "Politikens Fremmedordbog",
+    'a103': "Politikens Første Engelskordbog",
+    'plda': "Politikens Lille Danskordbog",
+    'pndo': "Politikens Nudansk Ordbog",
+    'prbo': "Politikens Retskrivnings- og Betydningsordbog",
+    'pret': "Politikens Retskrivningsordbog",
+    'prim': "Politikens Rimordbog",
+    'psko': "Politikens Skoleordbog",
+    'a104': "Politikens Store Engelskordbog",
+    'psyn': "Politikens Synonymordbog",
+    'a101': "Politikens Tyskordbog",
+    'a006': "Portugisisk / Dansk / Portugisisk",
+    'rtsk': "Retskrivningsordbogen",
+    'a005': "Spansk / Dansk / Spansk",
+    'a004': "Svensk / Dansk / Svensk",
+    'a001': "Tysk / Dansk / Tysk}"}
+
+
+""" Tuples to store scraped translations in. """
+TranslatedWord = namedtuple('TranslatedWord', ['word', 'language', 'wordclass',
+                                               'inflection', 'details'])
+WordDetails = namedtuple('WordDetails', ['category', 'example', 'explanation',
+                                         'word', 'combination'])
+WordSuggestion = namedtuple('WordSuggestion', ['word', 'language'])
+
 
 """ Session to hold session keys.
 Should probably set a user agent string.
 """
 session = requests.Session()
 
-TranslatedWord = namedtuple('TranslatedWord', ['word', 'language', 'wordclass',
-                                               'inflection', 'details'])
-WordDetails = namedtuple('WordDetails', ['category', 'example', 'explanation',
-                                         'word', 'combination'])
-WordSuggestion = namedtuple('WordSuggestion', ['word', 'language'])
+""" Dictionaries user has subscribed to. """
+_dictionarylanguages = []
 
 
 def login(username, password):
@@ -52,11 +86,7 @@ def login(username, password):
     Return bool indicating status and string with error messages.
 
     """
-    # TODO: Check whether we are already logged in or not.
-    # This can't really be done until I try and save cookies locally.
-
     if _loggedin(username):
-        print("Logged in using cookies from last visit.")
         return True, 'OK'
     # Create payload for jsonrpc.
     payload = {
@@ -64,7 +94,6 @@ def login(username, password):
         "method": "login",
         "id": 'jsonrpc'
     }
-    # Send request to server.
     r = session.post(LOGIN_URL, data=json.dumps(payload))
     jsonresponse = json.loads(r.text)
     _savecookies()
@@ -83,7 +112,7 @@ def lookup(word, lang='auto'):
     Return type is subject to change.
 
     """
-    if not lang in VALID_LANGUAGES:
+    if lang not in DICTIONARIES:
         return "Invalid language '{l}'."
     # Perform lookup.
     r = session.get(LOOKUP_URL.format(word=word, lang=lang))
@@ -95,7 +124,7 @@ def wordsuggestions(word, lang='auto'):
     """ Return a list of word suggestions.
 
     """
-    if not lang in VALID_LANGUAGES:
+    if lang not in DICTIONARIES:
         return "Invalid language '{l}'".format(l=lang)
     r = session.get(WORD_SUGGEST_URL.format(word=word, lang=lang))
     res = []
@@ -113,12 +142,15 @@ def keepalive():
     raise NotImplemented()
 
 
-def availablelanguages():
+def languages():
     """ Return a list of available languages.
     Languages available depend on the subscription the user has.
 
     """
-    raise NotImplemented()
+    # If there are no
+    if not _dictionarylanguages:
+        _parsedictionarylanguages()
+    return [DICTIONARIES[lang] for lang in _dictionarylanguages]
 
 
 def _gettext(doc, selector, num=0):
@@ -147,7 +179,10 @@ def _loggedin(username):
     """
     _loadcookies()
     response = session.get(BASE_URL)
-    return username in response.text
+    loggedin = username in response.text
+    if loggedin:
+        _parsedictionarylanguages(response.text)
+    return loggedin
 
 
 def _savecookies():
@@ -168,6 +203,16 @@ def _loadcookies():
     with file(COOKIE_FILE, 'r') as f:
         cookiedict = json.loads(f.read())
         session.cookies = requests.cookies.cookiejar_from_dict(cookiedict)
+
+
+def _parsedictionarylanguages(html=None):
+    global _dictionarylanguages
+    if not html:
+        html = session.get(BASE_URL).text
+    doc = lxml.html.fromstring(html)
+    options = doc.cssselect('#dict option')
+    _dictionarylanguages = [option.get('value')
+                            for option in doc.cssselect("#dict option")]
 
 
 def _parselookup(html):
@@ -209,3 +254,8 @@ def _parselookup(html):
             word.details.append(detail)
         results[language].append(word)
     return results
+
+
+def _gettranslationlanguages(doc):
+    lis = doc.cssselect("#dictsmenu li")
+    return [li.get('id')[:-5] for li in lis]
