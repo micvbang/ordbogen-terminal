@@ -66,7 +66,7 @@ def _lookup_and_print(input_):
                 _printword(word, "%i. " % len(words))
     # Print detailed information if we only found 1 word.
     if len(words) == 1:
-            _printdetailed(1, words)
+        _printdetailed(1, words)
     return words
 
 
