@@ -7,13 +7,16 @@ class Command(object):
     SET_DICT = 3
     LOOKUP = 4
     DETAILS = 5
+    HELP = 6
 
 
 def parse(txt):
-    if txt == "_exit":
+    if txt == ".exit":
         return Command.EXIT, None
-    elif txt == "_dicts":
+    elif txt == ".dicts":
         return Command.LIST_DICTS, None
+    elif txt in (".?", ".help"):
+        return Command.HELP
     elif re.match("_dict=\w{4}", txt):
         return Command.SET_DICT, txt[6:]
     elif _isint(txt):
