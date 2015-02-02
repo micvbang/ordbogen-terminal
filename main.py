@@ -144,7 +144,7 @@ def _printdetail(detail):
 
 
 def _printavailabledictionaries():
-    print("The following availabledictionaries are available:")
+    print("The following dictionaries are available:")
     dicts = availabledictionaries()
     for dic in dicts:
         puts("{short}: {long}".format(short=dic, long=dicts[dic]))
