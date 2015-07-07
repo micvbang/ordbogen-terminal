@@ -1,6 +1,8 @@
 README
 =========
 
+WARNING: This is old and somewhat broken. And the code is a mess.
+
 This is a python script to look up words on ordbogen.com directly in your terminal. Requires a subscription!
 
 Requires `clint`, `requests`, and `lxml`.
